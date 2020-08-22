@@ -37,7 +37,7 @@ func main() {
 
 	data := url.Values{}
 	data.Set("value1", *t)
-	data.Set("value2", string(b))
+	data.Set("value2", strings.TrimSpace(string(b)))
 
 	if len(*u) > 0 {
 		data.Set("value3", *u)
