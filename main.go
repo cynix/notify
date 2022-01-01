@@ -41,9 +41,9 @@ func main() {
 		return
 	}
 
-	LoadToken()
-
 	if *daemon {
+		LoadToken()
+
 		var d Daemon
 		d.Serve()
 		return
@@ -120,6 +120,8 @@ func main() {
 			os.Exit(1)
 		}
 	} else {
+		LoadToken()
+
 		if err := SendTelegram(text); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to send message: %v\n", err)
 			os.Exit(1)
