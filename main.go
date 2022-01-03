@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	msg := Message{Timestamp: time.Now(), Title: *title, Priority: *priority}
+	msg := Message{Timestamp: time.Now(), Hostname: Hostname, Title: *title, Priority: *priority}
 
 	if sendmail {
 		mail, err := parsemail.Parse(os.Stdin)

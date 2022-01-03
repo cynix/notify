@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 
@@ -26,6 +28,14 @@ func (p *PushoverSender) Send(msg Message) error {
 		return SendError{err: fmt.Errorf("invalid priority: %d", msg.Priority)}
 	}
 
+	if msg.Hostname != "" {
+		if msg.Title != "" {
+			msg.Title = "[" + msg.Hostname + "] " + msg.Title
+		} else {
+			msg.Title = msg.Hostname
+		}
+	}
+
 	if len(msg.Title) > 250 {
 		msg.Title = msg.Title[:250]
 	}
@@ -37,7 +47,7 @@ func (p *PushoverSender) Send(msg Message) error {
 	res, err := http.PostForm(endpoint, url.Values{
 		"token": {p.app},
 		"user": {p.user},
-		"message": {msg.Text + "\n\n#" + Hostname},
+		"message": {msg.Text},
 		"title": {msg.Title},
 		"priority": {strconv.Itoa(msg.Priority)},
 		"timestamp": {strconv.FormatInt(msg.Timestamp.Unix(), 10)},
@@ -48,8 +58,14 @@ func (p *PushoverSender) Send(msg Message) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		var r struct{
+			Errors []string `json:"errors"`
+		}
+
+		json.NewDecoder(res.Body).Decode(&r)
+
 		return SendError{
-			err: fmt.Errorf("HTTP %d", res.StatusCode),
+			err: fmt.Errorf("HTTP %d: %s", res.StatusCode, strings.Join(r.Errors, "; ")),
 			temporary: res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500,
 		}
 	}

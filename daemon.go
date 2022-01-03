@@ -36,7 +36,7 @@ func Daemon(ll []Listener, ss []Sender) {
 	}
 
 	log.Printf("daemon started (l=%d s=%d)", len(ll), len(ss))
-	Send(Message{Timestamp: time.Now(), Text: "Daemon started", Priority: -1}, ss)
+	Send(Message{Timestamp: time.Now(), Hostname: Hostname, Text: "Daemon started", Priority: -1}, ss)
 
 	ch := make(chan Message, 100)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -68,6 +68,10 @@ _stop:
 		case msg := <-ch:
 			var ok, tmp bool
 
+			if msg.Hostname != Hostname {
+				msg.Hostname = msg.Hostname + "." + Hostname
+			}
+
 			for _, err := range Send(msg, ss) {
 				if err == nil {
 					ok = true
@@ -95,7 +99,7 @@ _stop:
 	}
 
 	log.Print("daemon stopping")
-	Send(Message{Timestamp: time.Now(), Text: "Daemon stopping", Priority: -1}, ss)
+	Send(Message{Timestamp: time.Now(), Hostname: Hostname, Text: "Daemon stopping", Priority: -1}, ss)
 
 	for _, l := range ll {
 		if err := l.Close(); err != nil {

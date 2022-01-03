@@ -36,13 +36,16 @@ func (t *TelegramSender) Send(msg Message) error {
 		ParseMode string `json:"parse_mode"`
 	}{
 		ChatId: t.chatID,
+		Text: escape(msg.Text) + "\n\n",
 		ParseMode: "MarkdownV2",
 	}
 
 	if msg.Title != "" {
-		m.Text = fmt.Sprintf("*%s*\n\n%s\n\n\\#%s", escape(msg.Title), escape(msg.Text), escape(Hostname))
-	} else {
-		m.Text = fmt.Sprintf("%s\n\n\\#%s", escape(msg.Text), escape(Hostname))
+		m.Text = "*" + escape(msg.Title) + "*\n\n" + m.Text
+	}
+
+	for _, hostname := range strings.Split(msg.Hostname, ".") {
+		m.Text += "\\#" + hostname + " "
 	}
 
 	b, err := json.Marshal(m)
@@ -59,7 +62,6 @@ func (t *TelegramSender) Send(msg Message) error {
 
 	if res.StatusCode != http.StatusOK {
 		var r struct{
-			Ok bool `json:"ok"`
 			Description string `json:"description"`
 		}
 
