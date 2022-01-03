@@ -18,6 +18,9 @@ builds:
     flags:
       - -trimpath
     mod_timestamp: '{{ .CommitTimestamp }}'
+    hooks:
+      post:
+        - sudo chown 0:0 '{{ .Path }}'
 
 archives:
   - name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}"

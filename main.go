@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rfizzle/parsemail"
 	"github.com/spf13/pflag"
@@ -20,12 +22,9 @@ func main() {
 	flags.SetInterspersed(true)
 
 	ver := flags.BoolP("version", "v", false, "print version and exit")
-	setup := flags.Bool("setup", false, "initial setup")
-	daemon := flags.Bool("daemon", false, "run (or setup) as a daemon")
-	markdown := flags.Bool("markdown", false, "use markdown formatting")
-
-	var from, to string
-	flags.StringVarP(&from, "from", "f", "", "sender")
+	daemon := flags.Bool("daemon", false, "run as a daemon")
+	title := flags.String("title", "", "notification title")
+	priority := flags.Int("priority", 0, "notification priority")
 
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		panic(err)
@@ -33,23 +32,25 @@ func main() {
 
 	if *ver {
 		fmt.Printf("%s (%s)\n", version, commit[:7])
-		os.Exit(0)
-	}
-
-	if *setup {
-		Setup(*daemon)
 		return
 	}
 
 	if *daemon {
-		LoadToken()
+		ss, err := LoadSenders()
+		if err != nil {
+			panic(err)
+		}
 
-		var d Daemon
-		d.Serve()
+		u, err := NewUnixListener(UnixSocket)
+		if err != nil {
+			panic(err)
+		}
+
+		Daemon([]Listener{u}, ss)
 		return
 	}
 
-	var text string
+	msg := Message{Timestamp: time.Now(), Title: *title, Priority: *priority}
 
 	if sendmail {
 		mail, err := parsemail.Parse(os.Stdin)
@@ -58,40 +59,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		if from == "" {
-			if mail.Sender != nil {
-				from = mail.Sender.String()
-			}
+		msg.Text = strings.TrimRight(mail.TextBody, "\n")
 
-			if from == "" {
-				for _, f := range mail.From {
-					from = f.String()
-
-					if from != "" {
-						break
-					}
-				}
-			}
+		if msg.Title == "" {
+			msg.Title = strings.TrimSpace(mail.Subject)
 		}
-
-		if to == "" {
-			for _, t := range mail.To {
-				to = t.String()
-
-				if to != "" {
-					break
-				}
-			}
-		}
-
-		if subject := strings.TrimSpace(mail.Subject); subject != "" {
-			text = "*" + Escaper.Replace(subject) + "*\n\n"
-		}
-
-		text = fmt.Sprintf(
-			"%s%s\n\n%s \u2192 %s \\#%s",
-			text, Escaper.Replace(strings.TrimRight(mail.TextBody, "\n")),
-			Escaper.Replace(from), Escaper.Replace(to), Hostname)
 	} else {
 		b, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -99,57 +71,35 @@ func main() {
 			os.Exit(1)
 		}
 
-		text = strings.TrimRight(string(b), "\n")
-
-		if !*markdown {
-			text = Escaper.Replace(text)
-		}
-
-		if from != "" {
-			text = fmt.Sprintf("%s\n\n\\#%s \\#%s", text, Escaper.Replace(from), Hostname)
-		} else {
-			text = fmt.Sprintf("%s\n\n\\#%s", text, Hostname)
-		}
+		msg.Text = strings.TrimRight(string(b), "\n")
 	}
 
-	if conn, err := net.Dial("unixgram", Socket); err == nil {
+	if conn, err := net.Dial("unixgram", UnixSocket); err == nil {
 		defer conn.Close()
 
-		if n, err := conn.Write([]byte(text)); err != nil || n < len(text) {
-			fmt.Fprintf(os.Stderr, "failed to send message: %v (%d)\n", err, n)
-			os.Exit(1)
-		}
-	} else {
-		LoadToken()
-
-		if err := SendTelegram(text); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to send message: %v\n", err)
-			os.Exit(1)
+		if err := json.NewEncoder(conn).Encode(msg); err == nil {
+			return
 		}
 	}
+
+	ss, err := LoadSenders()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	for _, err = range Send(msg, ss) {
+		if err == nil {
+			return
+		}
+
+		fmt.Fprintf(os.Stderr, "failed to send: %v\n", err)
+	}
+
+	os.Exit(1)
 }
 
 var Hostname string
-var Escaper = strings.NewReplacer(
-	"\\", "\\\\",
-	"_", "\\_",
-	"*", "\\*",
-	"[", "\\[",
-	"]", "\\]",
-	"(", "\\(",
-	")", "\\)",
-	"~", "\\~",
-	"`", "\\`",
-	">", "\\>",
-	"#", "\\#",
-	"+", "\\+",
-	"-", "\\-",
-	"=", "\\=",
-	"|", "\\|",
-	"{", "\\{",
-	"}", "\\}",
-	".", "\\.",
-	"!", "\\!")
 
 func init() {
 	hostname, err := os.Hostname()
