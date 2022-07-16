@@ -79,6 +79,23 @@ func loadSenders(file string) ([]Sender, error) {
 		}
 
 		switch parts[0] {
+		case "ntfy":
+			parts = strings.Split(parts[1], "@")
+			if len(parts) > 2 {
+				continue
+			}
+
+			if len(parts) == 1 {
+				parts = append(parts, "")
+			}
+
+			s, err := NewNtfySender(parts[0], parts[1])
+			if err != nil {
+				continue
+			}
+
+			ss = append(ss, s)
+
 		case "pushover":
 			parts = strings.Split(parts[1], ",")
 			if len(parts) != 2 {

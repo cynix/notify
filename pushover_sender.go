@@ -44,7 +44,7 @@ func (p *PushoverSender) Send(msg Message) error {
 		msg.Text = msg.Text[:1000]
 	}
 
-	res, err := http.PostForm(endpoint, url.Values{
+	res, err := http.PostForm(pushoverEndpoint, url.Values{
 		"token": {p.app},
 		"user": {p.user},
 		"message": {msg.Text},
@@ -77,4 +77,4 @@ func (p *PushoverSender) String() string {
 	return "Pushover"
 }
 
-const endpoint = "https://api.pushover.net/1/messages.json"
+const pushoverEndpoint = "https://api.pushover.net/1/messages.json"
