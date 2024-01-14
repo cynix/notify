@@ -22,9 +22,12 @@ func main() {
 	flags.SetInterspersed(true)
 
 	ver := flags.BoolP("version", "v", false, "print version and exit")
-	daemon := flags.Bool("daemon", false, "run as a daemon")
+
 	title := flags.String("title", "", "notification title")
 	priority := flags.Int("priority", 0, "notification priority")
+
+	daemon := flags.Bool("daemon", false, "run as a daemon")
+	snmp := flags.Bool("snmp", false, "listen for SNMP traps")
 
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		panic(err)
@@ -46,7 +49,18 @@ func main() {
 			panic(err)
 		}
 
-		Daemon([]Listener{u}, ss)
+		l := []Listener{u}
+
+		if *snmp {
+			s, err := NewSnmpListener("udp://:162")
+			if err != nil {
+				panic(err)
+			}
+
+			l = append(l, s)
+		}
+
+		Daemon(l, ss)
 		return
 	}
 
