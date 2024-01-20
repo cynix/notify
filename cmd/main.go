@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/cynix/notify"
 	"github.com/rfizzle/parsemail"
 	"github.com/spf13/pflag"
 )
@@ -31,26 +29,26 @@ func main() {
 	}
 
 	if *ver {
-		fmt.Printf("%s (%s)\n", version, commit[:7])
+		fmt.Println(Version)
 		return
 	}
 
 	if *daemon {
-		ss, err := LoadSenders()
+		ss, err := notify.LoadSenders()
 		if err != nil {
 			panic(err)
 		}
 
-		u, err := NewUnixListener(UnixSocket)
+		u, err := notify.NewUnixListener()
 		if err != nil {
 			panic(err)
 		}
 
-		Daemon([]Listener{u}, ss)
+		notify.Daemon([]notify.Listener{u}, ss)
 		return
 	}
 
-	msg := Message{Timestamp: time.Now(), Hostname: Hostname, Title: *title, Priority: *priority}
+	msg := notify.Message{Title: *title, Priority: *priority}
 
 	if sendmail {
 		mail, err := parsemail.Parse(os.Stdin)
@@ -74,41 +72,11 @@ func main() {
 		msg.Text = strings.TrimRight(string(b), "\n")
 	}
 
-	if conn, err := net.Dial("unixgram", UnixSocket); err == nil {
-		defer conn.Close()
-
-		if err := json.NewEncoder(conn).Encode(msg); err == nil {
-			return
-		}
-	}
-
-	ss, err := LoadSenders()
-	if err != nil {
+	if err := notify.Notify(msg); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
-	for _, err = range Send(msg, ss) {
-		if err == nil {
-			return
-		}
-
-		fmt.Fprintf(os.Stderr, "failed to send: %v\n", err)
-	}
-
-	os.Exit(1)
-}
-
-var Hostname string
-
-func init() {
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-	Hostname = strings.SplitN(hostname, ".", 2)[0]
 }
 
 // Will be overwritten by goreleaser
-var version string = "dev"
-var commit string = "0000000"
+var Version string = "dev"

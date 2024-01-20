@@ -1,4 +1,4 @@
-package main
+package notify
 
 import (
 	"bytes"
@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-
-const UserId = 100935633
 
 type TelegramSender struct {
 	endpoint string

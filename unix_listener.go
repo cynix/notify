@@ -1,4 +1,4 @@
-package main
+package notify
 
 import (
 	"encoding/hex"
@@ -20,21 +20,21 @@ type UnixListener struct {
 	closing bool
 }
 
-func NewUnixListener(socket string) (Listener, error) {
-	if err := os.Remove(socket); err != nil && !errors.Is(err, os.ErrNotExist) {
+func NewUnixListener() (Listener, error) {
+	if err := os.Remove(UnixSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 
-	conn, err := net.ListenPacket("unixgram", socket)
+	conn, err := net.ListenPacket("unixgram", UnixSocket)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = os.Chmod(socket, 0777); err != nil {
+	if err = os.Chmod(UnixSocket, 0777); err != nil {
 		return nil, err
 	}
 
-	return &UnixListener{socket: socket, conn: conn}, nil
+	return &UnixListener{socket: UnixSocket, conn: conn}, nil
 }
 
 func (u *UnixListener) Listen(ch chan<- Message) error {

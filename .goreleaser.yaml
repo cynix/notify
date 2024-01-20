@@ -1,7 +1,8 @@
 project_name: notify
 
 builds:
-  - env:
+  - main: ./cmd/main.go
+    env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
