@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/cynix/notify"
-	"github.com/rfizzle/parsemail"
+	"github.com/on2itsecurity/parsemail"
 	"github.com/spf13/pflag"
 )
 
