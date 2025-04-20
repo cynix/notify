@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path"
 	"time"
 )
 
@@ -22,6 +23,10 @@ type UnixListener struct {
 
 func NewUnixListener() (Listener, error) {
 	if err := os.Remove(UnixSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(path.Dir(UnixSocket), 0755); err != nil {
 		return nil, err
 	}
 
