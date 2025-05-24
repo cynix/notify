@@ -20,6 +20,12 @@ type SendError struct {
 
 
 func LoadSenders() ([]Sender, error) {
+	if config := os.Getenv("NOTIFY_CONFIG"); config != "" {
+		if ss, err := loadSenders(config); err == nil {
+			return ss, nil
+		}
+	}
+
 	if ss, err := loadSenders("/usr/local/etc/notify.conf"); err == nil {
 		return ss, nil
 	}
