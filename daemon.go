@@ -175,7 +175,11 @@ func retry(ctx context.Context, wg *sync.WaitGroup, q *dque.DQue, ss []Sender) {
 	}
 }
 
-const (
-	queueDir = "/var/tmp/notify"
-	queueName = "queue"
-)
+func init() {
+	if queueDir = os.Getenv("STATE_DIRECTORY"); queueDir == "" {
+		queueDir = "/var/tmp/notify"
+	}
+}
+
+var queueDir string
+const queueName = "queue"
